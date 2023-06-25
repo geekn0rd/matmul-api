@@ -12,6 +12,33 @@ type Matrix struct {
 	Data [][]int `json:"data"`
 }
 
+func multiplyMatrices(matrixA, matrixB Matrix) Matrix {
+	if matrixA.Cols != matrixB.Rows {
+		// Dimension mismatch
+		return Matrix{}
+	}
+
+	resultRows := matrixA.Rows
+	resultCols := matrixB.Cols
+	resultData := make([][]int, resultRows)
+	for i := 0; i < resultRows; i++ {
+		resultData[i] = make([]int, resultCols)
+		for j := 0; j < resultCols; j++ {
+			sum := 0
+			for k := 0; k < matrixA.Cols; k++ {
+				sum += matrixA.Data[i][k] * matrixB.Data[k][j]
+			}
+			resultData[i][j] = sum
+		}
+	}
+
+	return Matrix{
+		Rows: resultRows,
+		Cols: resultCols,
+		Data: resultData,
+	}
+}
+
 func main() {
 	fmt.Println("abbas")
 	app := fiber.New()

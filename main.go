@@ -21,6 +21,7 @@ func multiplyMatrices(matrixA, matrixB Matrix) Matrix {
 	resultRows := matrixA.Rows
 	resultCols := matrixB.Cols
 	resultData := make([][]int, resultRows)
+
 	for i := 0; i < resultRows; i++ {
 		resultData[i] = make([]int, resultCols)
 		for j := 0; j < resultCols; j++ {
@@ -39,13 +40,26 @@ func multiplyMatrices(matrixA, matrixB Matrix) Matrix {
 	}
 }
 
+func multiplyMatricesHandler(c *fiber.Ctx) error {
+	var matrices struct {
+		MatrixA Matrix `json:"matrixA"`
+		MatrixB Matrix `json:"matrixB"`
+	}
+
+	if err := c.BodyParser(&matrices); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request payload"})
+	}
+
+	resultMatrix := multiplyMatrices(matrices.MatrixA, matrices.MatrixB)
+
+	return c.JSON(resultMatrix)
+}
+
 func main() {
 	fmt.Println("abbas")
 	app := fiber.New()
 
-	app.Get("/hello", func(c *fiber.Ctx) error {
-		return c.JSON("Hello")
-	})
+	app.Post("/matmul", multiplyMatricesHandler)
 
 	if err := app.Listen("0.0.0.0:1379"); err != nil {
 		fmt.Printf("we have error on listening %s\n", err)

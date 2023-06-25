@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -13,25 +14,47 @@ type Matrix struct {
 }
 
 func multiplyMatrices(matrixA, matrixB Matrix) Matrix {
-	if matrixA.Cols != matrixB.Rows {
-		// Dimension mismatch
-		return Matrix{}
-	}
-
 	resultRows := matrixA.Rows
 	resultCols := matrixB.Cols
 	resultData := make([][]int, resultRows)
 
+	// Create a semaphore to limit the number of concurrent goroutines
+	semaphore := make(chan struct{}, resultRows)
+
+	// Create a mutex for synchronizing access to resultData
+	var mutex sync.Mutex
+
+	var wg sync.WaitGroup
+	wg.Add(resultRows)
+
 	for i := 0; i < resultRows; i++ {
-		resultData[i] = make([]int, resultCols)
-		for j := 0; j < resultCols; j++ {
-			sum := 0
-			for k := 0; k < matrixA.Cols; k++ {
-				sum += matrixA.Data[i][k] * matrixB.Data[k][j]
+		go func(row int) {
+			defer wg.Done()
+
+			// Acquire a semaphore
+			semaphore <- struct{}{}
+
+			// Perform matrix multiplication for the given row
+			resultRow := make([]int, resultCols)
+			for j := 0; j < resultCols; j++ {
+				sum := 0
+				for k := 0; k < matrixA.Cols; k++ {
+					sum += matrixA.Data[row][k] * matrixB.Data[k][j]
+				}
+				resultRow[j] = sum
 			}
-			resultData[i][j] = sum
-		}
+
+			// Acquire the mutex to write to the resultData
+			mutex.Lock()
+			resultData[row] = resultRow
+			mutex.Unlock()
+
+			// Release the semaphore
+			<-semaphore
+		}(i)
 	}
+
+	wg.Wait()
 
 	return Matrix{
 		Rows: resultRows,
@@ -48,6 +71,10 @@ func multiplyMatricesHandler(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&matrices); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request payload"})
+	}
+
+	if matrices.MatrixA.Cols != matrices.MatrixB.Rows {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Dimension mismatch"})
 	}
 
 	resultMatrix := multiplyMatrices(matrices.MatrixA, matrices.MatrixB)

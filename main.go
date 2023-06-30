@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/gofiber/fiber/v2"
 )
+
+var numWorkers int = 4 // Default number of workers
+var numWorkersMutex sync.Mutex
 
 type Matrix struct {
 	Rows int     `json:"rows"`
@@ -18,8 +22,8 @@ func multiplyMatrices(matrixA, matrixB Matrix) Matrix {
 	resultCols := matrixB.Cols
 	resultData := make([][]int, resultRows)
 
-	// Create a semaphore to limit the number of concurrent goroutines
-	semaphore := make(chan struct{}, resultRows)
+	// Use the numWorkers variable to limit the number of concurrent goroutines
+	semaphore := make(chan struct{}, numWorkers)
 
 	// Create a mutex for synchronizing access to resultData
 	var mutex sync.Mutex
@@ -63,6 +67,21 @@ func multiplyMatrices(matrixA, matrixB Matrix) Matrix {
 	}
 }
 
+func setNumberOfWorkersHandler(c *fiber.Ctx) error {
+	numWorkersStr := c.Query("numWorkers")
+	numOfWorkers, err := strconv.Atoi(numWorkersStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid number of workers"})
+	}
+
+	// Acquire the mutex to update the numWorkers variable
+	numWorkersMutex.Lock()
+	numWorkers = numOfWorkers
+	numWorkersMutex.Unlock()
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
 func multiplyMatricesHandler(c *fiber.Ctx) error {
 	var matrices struct {
 		MatrixA Matrix `json:"matrixA"`
@@ -87,6 +106,8 @@ func main() {
 	app := fiber.New()
 
 	app.Post("/matmul", multiplyMatricesHandler)
+
+	app.Get("/setNumberOfWorkers", setNumberOfWorkersHandler)
 
 	if err := app.Listen("0.0.0.0:1379"); err != nil {
 		fmt.Printf("we have error on listening %s\n", err)

@@ -37,3 +37,11 @@ we can expect to receive the following response:
 }
 
 ```
+# Bonus section:
+```bash
+curl -X GET "http://localhost:1379/setNumberOfWorkers?numWorkers=8"
+````
+In this example, the numWorkers parameter is passed as a query parameter in the URL. The value 8 indicates the desired number of workers.
+```json
+{"message":"Number of workers set to 8"}
+```

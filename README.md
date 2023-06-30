@@ -1,6 +1,6 @@
 # matmul-api
 An HTTP server in Go accepts two matrices via a POST request and sends the matmul of them as the response. 
-
+The code uses goroutines and channels to perform matrix multiplication in parallel, utilizing concurrent execution to potentially improve performance. 
 # Usage 
 First, you should go build and then run the server, 
 after that, with the curl command, you can make POST requests and get the appropriate responses.
